@@ -6,25 +6,66 @@ class PostController {
     try {
       const posts = await prisma.post.findMany({});
 
+      // let userIds = [];
+      // posts.forEach((item) => {
+      //   userIds.push(item.user_id);
+      // });
+
+      // Method 1
+      // let postWithUsers = await Promise.all(
+      //   posts.map(async (post) => {
+      //     const res = await axios.get(
+      //       `${process.env.AUTH_MICRO_URL}/api/getUser/${post.user_id}`
+      //     );
+
+      //     console.log("the user res", res.data);
+      //     return {
+      //       ...post,
+      //       ...res.data,
+      //     };
+      //   })
+      // );
+      // ----------------------------------------------------
+      // Method 2 optimized
       let userIds = [];
       posts.forEach((item) => {
         userIds.push(item.user_id);
       });
 
-      // Method 1
-      let postWithUsers = await Promise.all(
-        posts.map(async (post) => {
-          const res = await axios.get(
-            `${process.env.AUTH_MICRO_URL}/api/getUser/${post.user_id}`
-          );
+      //fetch users
+      const response = await axios.post(
+        `${process.env.AUTH_MICRO_URL}/api/getUsers`,
+        userIds
+      );
 
-          console.log("the user res", res.data);
+      const users = {};
+      response.data.user.forEach((item) => {
+        users[item.id] = item;
+      });
+      // console.log(response.data);
+
+      // let postWithUsers = await Promise.all(
+      //   posts.map((post) => {
+      //     const user = users.find((item) => item.id === post.user_id);
+      //     return {
+      //       ...post,
+      //       user,
+      //     };
+      //   })
+      // );
+
+      //Method 3
+      let postWithUsers = await Promise.all(
+        posts.map((post) => {
+          const user = users[post.user_id];
           return {
             ...post,
-            ...res.data,
+            user,
           };
         })
       );
+
+      // console.log("The users are", response.data);
       return res.json({ postWithUsers });
     } catch (error) {
       console.log("Post Fetch", error);
